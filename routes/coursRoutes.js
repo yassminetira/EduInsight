@@ -21,5 +21,6 @@ router.get("/list", coursController.listerCours);
 router.get("/:id", coursController.getCourseById);
 router.put("/:id",protect, coursController.updateCours);
 router.delete("/:id", coursController.deleteCours);
+router.post('/:id/enroll', protect, authorize('student'), coursController.enrollCours);
 
 module.exports = router;

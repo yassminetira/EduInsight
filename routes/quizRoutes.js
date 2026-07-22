@@ -9,5 +9,8 @@ router.get("/list", protect, quizController.listerQuiz);
 router.get("/:id", protect, quizController.getQuizById);
 router.put("/:id", protect, authorize(["teacher", "admin"]), quizController.updateQuiz);
 router.delete("/:id", protect, authorize(["teacher", "admin"]), quizController.deleteQuiz);
+router.patch('/:id/publish', protect, authorize(["teacher", "admin"]), quizController.publishQuiz);
+router.post('/:id/questions', protect, authorize(["teacher", "admin"]), quizController.addQuestion);
+
 
 module.exports = router;

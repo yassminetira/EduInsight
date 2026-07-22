@@ -64,3 +64,9 @@ exports.deleteNotification = async (req, res) => {
     res.status(500).json({ message: "Erreur de suppression", error: err.message });
   }
 };
+exports.markAsRead = async (req, res, next) => {
+  try {
+    const notif = await Notification.findByIdAndUpdate(req.params.id, { isRead: true }, { new: true });
+    res.status(200).json({ success: true, data: notif });
+  } catch (error) { next(error); }
+};

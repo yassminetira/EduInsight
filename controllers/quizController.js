@@ -66,3 +66,22 @@ exports.deleteQuiz = async (req, res) => {
     res.status(500).json({ message: "Erreur de suppression", error: err.message });
   }
 };
+exports. publishQuiz = async (req, res, next) => {
+  try {
+    const quiz = await Quiz.findByIdAndUpdate(req.params.id, { isPublished: true }, { new: true });
+    res.status(200).json({ success: true, data: quiz });
+  } catch (error) { next(error); }
+};
+exports. addQuestion = async (req, res, next) => {
+  try {
+    const { choices, ...questionData } = req.body;
+    const question = await Question.create({ ...questionData, quiz: req.params.quizId });
+
+    if (choices && choices.length > 0) {
+      const choiceDocs = choices.map(c => ({ ...c, question: question._id }));
+      await Choice.insertMany(choiceDocs);
+    }
+
+    res.status(201).json({ success: true, data: question });
+  } catch (error) { next(error); }
+};

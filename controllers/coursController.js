@@ -1,5 +1,6 @@
 // controllers/coursController.js
 const Cours = require("../models/Cours");
+const Inscription = require("../models/Inscription");
 
 exports.ajouterCours = async (req, res) => {
   try {
@@ -64,5 +65,16 @@ exports.deleteCours = async (req, res) => {
     res.json({ message: "Course deleted successfully." });
   } catch (err) {
     res.status(500).json({ message: "Failed to delete course.", error: err.message });
+  }
+};
+exports.enrollCours = async (req, res, next) => {
+  try {
+    const inscription = await Inscription.create({
+      student: req.user.id,
+      cours: req.params.id,
+    });
+    res.status(201).json({ success: true, data: inscription });
+  } catch (error) {
+    next(error);
   }
 };
