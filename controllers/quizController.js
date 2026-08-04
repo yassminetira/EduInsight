@@ -1,5 +1,6 @@
 // controllers/quizController.js
 const Quiz = require("../models/Quiz");
+const Question = require("../models/Question");
 
 // Ajouter un quiz
 exports.ajouterQuiz = async (req, res) => {
@@ -12,12 +13,36 @@ exports.ajouterQuiz = async (req, res) => {
   }
 };
 
-// Récupérer tous les quiz
+// Récupérer tous les quiz (avec pagination)
 exports.listerQuiz = async (req, res) => {
   try {
-    const quiz = await Quiz.find().populate("cours")
-.populate("createdBy");
-    res.json(quiz);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const quiz = await Quiz.find()
+      .populate("cours")
+      .populate("createdBy")
+      .skip(skip)
+      .limit(limit);
+
+    // Zid عدد الأسئلة لكل quiz
+    const quizWithCount = await Promise.all(
+      quiz.map(async (q) => {
+        const questionCount = await Question.countDocuments({ Quiz: q._id });
+        return { ...q.toObject(), questionCount };
+      })
+    );
+
+    const totalQuizzes = await Quiz.countDocuments();
+
+    res.json({
+      quizzes: quizWithCount,
+      totalQuizzes,
+      page,
+      totalPages: Math.ceil(totalQuizzes / limit),
+      limit,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

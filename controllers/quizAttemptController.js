@@ -12,13 +12,28 @@ exports.ajouterQuizAttempt = async (req, res) => {
   }
 };
 
-// Récupérer toutes les tentatives
+// Récupérer toutes les tentatives (avec pagination)
 exports.listerQuizAttempts = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
     const attempts = await QuizAttempt.find()
       .populate("student")
-      .populate("Quiz");
-    res.json(attempts);
+      .populate("Quiz")
+      .skip(skip)
+      .limit(limit);
+
+    const totalAttempts = await QuizAttempt.countDocuments();
+
+    res.json({
+      attempts,
+      totalAttempts,
+      page,
+      totalPages: Math.ceil(totalAttempts / limit),
+      limit,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

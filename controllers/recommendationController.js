@@ -12,13 +12,27 @@ exports.ajouterRecommendation = async (req, res) => {
   }
 };
 
-// Récupérer toutes les recommandations
+// Récupérer toutes les recommandations (avec pagination)
 exports.listerRecommendations = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
     const recommendations = await Recommendation.find()
-      .populate("student");
-      
-    res.json(recommendations);
+      .populate("student")
+      .skip(skip)
+      .limit(limit);
+
+    const totalRecommendations = await Recommendation.countDocuments();
+
+    res.json({
+      recommendations,
+      totalRecommendations,
+      page,
+      totalPages: Math.ceil(totalRecommendations / limit),
+      limit,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

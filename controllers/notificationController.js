@@ -12,16 +12,31 @@ exports.ajouterNotification = async (req, res) => {
   }
 };
 
-// Récupérer toutes les notifications
+// Récupérer toutes les notifications (avec pagination)
 exports.listerNotifications = async (req, res) => {
   try {
-    const notifications = await Notification.find().populate("user");
-    res.json(notifications);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const notifications = await Notification.find()
+      .populate("user")
+      .skip(skip)
+      .limit(limit);
+
+    const totalNotifications = await Notification.countDocuments();
+
+    res.json({
+      notifications,
+      totalNotifications,
+      page,
+      totalPages: Math.ceil(totalNotifications / limit),
+      limit,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
-
 // Récupérer une notification par ID
 exports.getNotificationById = async (req, res) => {
   try {

@@ -16,14 +16,27 @@ exports.ajouterCours = async (req, res) => {
 };
 
 exports.listerCours = async (req, res) => {
-  try {
-    const liste = await Cours.find();
-    res.json(liste);
-  } catch (err) {
-    res.status(500).json({ message: "Failed to retrieve cours.", error: err.message });
-  }
-};
 
+      try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const cours = await Cours.find().skip(skip).limit(limit);
+    const totalCours = await Cours.countDocuments();
+
+    res.json({
+      cours,
+      totalCours,
+      page,
+      totalPages: Math.ceil(totalCours / limit),
+      limit,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  };
+
+}
 exports.getCourseById = async (req, res) => {
   try {
     const item = await Cours.findById(req.params.id);

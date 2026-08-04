@@ -13,9 +13,11 @@ router.post(
  userController.ajouterUtilisateur
 );
 
-router.get("/list", protect, authorize(["admin", "teacher", "student"]), userController.listerUtilisateurs);
-router.get("/:id", protect, authorize(["admin", "teacher", "student"]), userController.getUtilisateurById);
-router.put("/:id", protect, authorize(["admin"]), userController.updateUtilisateur);
+router.get("/list", protect, authorize(["admin", "teacher"]), userController.listerUtilisateurs);
+router.get("/students", protect, authorize(["admin","teacher"]), userController.listerStudents);
+router.get("/:id", protect, authorize(["admin", "teacher"]), userController.getUtilisateurById);
+router.put("/:id", protect, authorize(["admin","teacher"]), userController.updateUtilisateur);
 router.delete("/:id", protect, authorize(["admin"]), userController.deleteUtilisateur);
+
 
 module.exports = router;

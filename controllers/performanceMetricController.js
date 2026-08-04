@@ -12,17 +12,48 @@ exports.ajouterPerformanceMetric = async (req, res) => {
   }
 };
 
-// Récupérer toutes les métriques
+// Récupérer toutes les métriques (avec pagination)
 exports.listerPerformanceMetrics = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
     const metrics = await PerformanceMetric.find()
       .populate("student")
-      .populate("Cours");
-    res.json(metrics);
+      .populate("Cours")
+      .skip(skip)
+      .limit(limit);
+
+    const totalMetrics = await PerformanceMetric.countDocuments();
+
+    res.json({
+      metrics,
+      totalMetrics,
+      page,
+      totalPages: Math.ceil(totalMetrics / limit),
+      limit,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Récupérer une métrique par ID
+exports.getPerformanceMetricById = async (req, res) => {
+  try {
+    const metric = await PerformanceMetric.findById(req.params.id)
+      .populate("student")
+      .populate("Cours");
+    if (!metric) {
+      return res.status(404).json({ message: "Métrique non trouvée" });
+    }
+    res.json(metric);
+  } catch (err) {
+    res.status(500).json({ message: "Erreur lors de la récupération", error: err.message });
+  }
+};
+
 
 // Récupérer une métrique par ID
 exports.getPerformanceMetricById = async (req, res) => {

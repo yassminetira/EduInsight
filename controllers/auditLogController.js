@@ -12,16 +12,32 @@ exports.ajouterAuditLog = async (req, res) => {
   }
 };
 
-// Récupérer tous les logs d'audit
+// Récupérer tous les logs d'audit (avec pagination)
 exports.listerAuditLogs = async (req, res) => {
   try {
-    const auditLogs = await AuditLog.find().populate("user", "nom prenom email");
-    res.json(auditLogs);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const auditLogs = await AuditLog.find()
+      .populate("user", "firstName lastName email")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const totalLogs = await AuditLog.countDocuments();
+
+    res.json({
+      auditLogs,
+      totalLogs,
+      page,
+      totalPages: Math.ceil(totalLogs / limit),
+      limit,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
-
 // Récupérer un log d'audit par ID
 exports.getAuditLogById = async (req, res) => {
   try {
