@@ -20,7 +20,7 @@ const quizSchema = new mongoose.Schema(
     },
     passingScore: {
       type: Number,
-      required: true,
+    
     },
     isPublished: {
       type: Boolean,

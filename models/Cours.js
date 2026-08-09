@@ -5,7 +5,7 @@ const coursSchema = new mongoose.Schema({
     Description : { type: String, required: true },
     Department: { 
     type: mongoose.Schema.Types.ObjectId, 
-    ref: "Departement", required: true },
+    ref: "Departement" },
     
     Teacher : { 
         type: mongoose.Schema.Types.ObjectId, 

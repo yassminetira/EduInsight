@@ -358,19 +358,32 @@ for (let i = 0; i < NB; i++) {
   correctChoiceByQuestion.push(choices.find((c) => c.isCorrect));
 }
 console.log(`✅ ${NB} Questions (+ Choices) créées.`);
+// 13. Inscriptions — كل student يظهر مرتين: مرة completed, مرة active
+const enrollmentPairs = [
+  { student: 0, cours: 0 }, { student: 0, cours: 1 },
+  { student: 1, cours: 0 }, { student: 1, cours: 2 },
+  { student: 2, cours: 0 }, { student: 2, cours: 3 },
+  { student: 3, cours: 1 }, { student: 3, cours: 4 },
+  { student: 4, cours: 1 }, { student: 4, cours: 5 },
+  { student: 5, cours: 2 }, { student: 5, cours: 6 },
+  { student: 6, cours: 3 }, { student: 6, cours: 7 },
+  { student: 7, cours: 3 }, { student: 7, cours: 8 },
+  { student: 8, cours: 4 }, { student: 8, cours: 9 },
+  { student: 9, cours: 5 }, { student: 9, cours: 6 },
+];
 
-   // 13. Inscriptions (10)
-const statuses = ["completed", "active", "completed", "active", "active", "completed", "active", "active", "completed", "active"];
+// أول inscription لكل student = completed (Review), الثانية = active (Continue)
+const statuses = enrollmentPairs.map((_, i) => (i % 2 === 0 ? "completed" : "active"));
 
-for (let i = 0; i < NB; i++) {
+for (let i = 0; i < enrollmentPairs.length; i++) {
   await Inscription.create({
-    student: students[i]._id,
-    cours: coursList[i]._id,
+    student: students[enrollmentPairs[i].student]._id,
+    cours: coursList[enrollmentPairs[i].cours]._id,
     enrolledAt: new Date(),
     status: statuses[i],
   });
 }
-console.log(`✅ ${NB} Inscriptions créées.`);
+console.log(`✅ ${enrollmentPairs.length} Inscriptions créées.`);
     // 14. QuizAttempts (10) — scores variés
 const scores = [95, 62, 78, 88, 55, 92, 70, 45, 83, 67];
 

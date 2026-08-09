@@ -16,17 +16,29 @@ exports.ajouterCours = async (req, res) => {
 };
 
 exports.listerCours = async (req, res) => {
-
-      try {
+  try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const cours = await Cours.find().skip(skip).limit(limit);
+    const cours = await Cours.find()
+      .populate("Department", "name")
+      .populate("Teacher", "firstName lastName")
+      .skip(skip)
+      .limit(limit);
+
+    // Zid عدد الطلبة المسجلين لكل كورس
+    const coursWithStudentsCount = await Promise.all(
+      cours.map(async (c) => {
+        const studentsCount = await Inscription.countDocuments({ cours: c._id });
+        return { ...c.toObject(), studentsCount };
+      })
+    );
+
     const totalCours = await Cours.countDocuments();
 
     res.json({
-      cours,
+      cours: coursWithStudentsCount,
       totalCours,
       page,
       totalPages: Math.ceil(totalCours / limit),
@@ -34,9 +46,9 @@ exports.listerCours = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
-  };
+  }
+};
 
-}
 exports.getCourseById = async (req, res) => {
   try {
     const item = await Cours.findById(req.params.id);
@@ -50,7 +62,8 @@ exports.getCourseById = async (req, res) => {
 };
 
 exports.updateCours = async (req, res) => {
-  try {const updateData = { ...req.body };
+  try {
+    const updateData = { ...req.body };
 
     if (req.file) {
       updateData.image = `uploads/courses/${req.file.filename}`;
@@ -80,6 +93,7 @@ exports.deleteCours = async (req, res) => {
     res.status(500).json({ message: "Failed to delete course.", error: err.message });
   }
 };
+
 exports.enrollCours = async (req, res, next) => {
   try {
     const inscription = await Inscription.create({

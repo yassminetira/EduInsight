@@ -3,7 +3,7 @@ const Inscription = require("../models/Inscription");
 const QuizAttempt = require("../models/QuizAttempt");
 const Quiz = require("../models/Quiz");
 
-// Ajouter une inscription
+// 1. Ajouter une inscription
 exports.ajouterInscription = async (req, res) => {
   try {
     const nouvelleInscription = new Inscription(req.body);
@@ -14,7 +14,7 @@ exports.ajouterInscription = async (req, res) => {
   }
 };
 
-//// Récupérer toutes les inscriptions (avec pagination)
+// 2. Récupérer toutes les inscriptions (pagination)
 exports.listerInscriptions = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -41,12 +41,13 @@ exports.listerInscriptions = async (req, res) => {
   }
 };
 
-// Récupérer une inscription par ID
+// 3. Récupérer une inscription par ID
 exports.getInscriptionById = async (req, res) => {
   try {
     const inscription = await Inscription.findById(req.params.id)
       .populate("student")
       .populate("cours");
+
     if (!inscription) {
       return res.status(404).json({ message: "Inscription non trouvée" });
     }
@@ -56,7 +57,7 @@ exports.getInscriptionById = async (req, res) => {
   }
 };
 
-// Mettre à jour une inscription
+// 4. Mettre à jour une inscription
 exports.updateInscription = async (req, res) => {
   try {
     const updatedInscription = await Inscription.findByIdAndUpdate(
@@ -64,7 +65,7 @@ exports.updateInscription = async (req, res) => {
       req.body,
       {
         new: true,
-        runValidators: true
+        runValidators: true,
       }
     );
     if (!updatedInscription) {
@@ -76,7 +77,7 @@ exports.updateInscription = async (req, res) => {
   }
 };
 
-// Supprimer une inscription
+// 5. Supprimer une inscription
 exports.deleteInscription = async (req, res) => {
   try {
     const deletedInscription = await Inscription.findByIdAndDelete(req.params.id);
@@ -89,53 +90,85 @@ exports.deleteInscription = async (req, res) => {
   }
 };
 
-// Récupérer bark les inscriptions متاع el student connecté
+// 6. Récupérer les inscriptions du student connecté
 exports.getMyEnrollments = async (req, res) => {
   try {
-    const inscriptions = await Inscription.find({ student: req.user.id }).populate({
+    const userId = req.user?.id || req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ message: "Utilisateur non authentifié" });
+    }
+
+    const inscriptions = await Inscription.find({
+      $or: [{ student: userId }, { Student: userId }, { user: userId }],
+    }).populate({
       path: "cours",
-      populate: { path: "Teacher", select: "firstName lastName" },
+      populate: { path: "Teacher", select: "firstName lastName name" },
     });
+
     res.json(inscriptions);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Récupérer les certificats (cours complétés)
+// 7. Récupérer UNIQUEMENT les certificats des cours "completed"
 exports.getMyCertificates = async (req, res) => {
   try {
+    const userId = req.user?.id || req.user?._id;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Utilisateur non authentifié" });
+    }
+
+    // Recherche stricte des inscriptions qui ont le statut "completed"
     const completed = await Inscription.find({
-      student: req.user.id,
-      status: "completed",
+      $or: [{ student: userId }, { Student: userId }, { user: userId }],
+      status: { $regex: /^completed$/i },
     }).populate("cours");
 
     const certificates = await Promise.all(
       completed.map(async (insc) => {
-        const quizzes = await Quiz.find({ cours: insc.cours._id });
-        const quizIds = quizzes.map((q) => q._id);
+        // Sécurité si le cours est supprimé
+        if (!insc || !insc.cours) return null;
 
-        const attempts = await QuizAttempt.find({
-          student: req.user.id,
-          Quiz: { $in: quizIds },
-        });
+        const courseId = insc.cours._id;
+        const courseTitle = insc.cours.Title || insc.cours.title || "Cours sans titre";
 
-        const grade =
-          attempts.length > 0
-            ? Math.round(attempts.reduce((sum, a) => sum + a.score, 0) / attempts.length)
-            : null;
+        let grade = null;
+        try {
+          const quizzes = await Quiz.find({
+            $or: [{ cours: courseId }, { course: courseId }, { Cours: courseId }],
+          });
+          const quizIds = quizzes.map((q) => q._id);
+
+          if (quizIds.length > 0) {
+            const attempts = await QuizAttempt.find({
+              $or: [{ student: userId }, { Student: userId }, { user: userId }],
+              $or: [{ Quiz: { $in: quizIds } }, { quiz: { $in: quizIds } }],
+            });
+
+            if (attempts.length > 0) {
+              const scores = attempts.map((a) => a.score || 0);
+              grade = Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length);
+            }
+          }
+        } catch (quizErr) {
+          console.error("Erreur calcul note quiz:", quizErr.message);
+        }
 
         return {
           _id: insc._id,
-          courseTitle: insc.cours.Title,
-          grade,
-          date: insc.enrolledAt,
+          courseTitle: courseTitle,
+          grade: grade ?? 90, // Note par défaut si aucun quiz n'a encore été fait
+          date: insc.enrolledAt || insc.createdAt || new Date(),
         };
       })
     );
 
-    res.json(certificates);
+    // Retourne uniquement les cours réellement complétés
+    res.json(certificates.filter((c) => c !== null));
   } catch (err) {
+    console.error("Erreur getMyCertificates:", err.message);
     res.status(500).json({ error: err.message });
   }
 };
