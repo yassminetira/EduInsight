@@ -8,5 +8,6 @@ const authorize = require("../middlewares/roleMiddleware");
 router.get("/student", protect, authorize(["student"]), dashboardController.generateForStudent);
 router.get("/teacher", protect, authorize(["teacher"]), dashboardController.generateForTeacher);
 router.get("/admin", protect, authorize(["admin"]), dashboardController.generateForAdmin);
-
+router.get("/analytics", protect, authorize(["admin"]), dashboardController.getAnalytics);
+router.get("/progress", protect, authorize(["student"]), dashboardController.getStudentProgress);
 module.exports = router;
