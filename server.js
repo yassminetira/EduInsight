@@ -43,7 +43,7 @@ app.use("/api/login", require("./routes/authRoutes"));
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/dashboard", require("./routes/dashboardRoutes"));
-
+app.use("/api/chat", require("./routes/chatRoutes"));
 
 // Lancer le serveur
 const PORT = process.env.PORT || 5000;
