@@ -39,23 +39,9 @@ const seedDatabase = async () => {
     await mongoose.connect(MONGO_URI);
     console.log("🔌 Connecté à MongoDB pour le seeding...");
 
-    // 2. Nettoyage
-    await Departement.deleteMany({});
-    await User.deleteMany({});
-    await Cours.deleteMany({});
-    await Module.deleteMany({});
-    await Lesson.deleteMany({});
-    await Quiz.deleteMany({});
-    await Question.deleteMany({});
-    await Choice.deleteMany({});
-    await Inscription.deleteMany({});
-    await QuizAttempt.deleteMany({});
-    await Answer.deleteMany({});
-    await Notification.deleteMany({});
-    await Recommendation.deleteMany({});
-    await PerformanceMetric.deleteMany({});
-    await AuditLog.deleteMany({});
-    console.log("🧹 Anciennes données supprimées.");
+    // 2. Upsert mode (non-destructive)
+    // We avoid wiping collections here. Instead we will upsert records so seeding is idempotent.
+    console.log("ℹ️ Seeding in upsert mode — existing data preserved.");
 
     // 3. Hash du mot de passe par défaut
     const hashedPassword = await bcrypt.hash("Password123!", 10);
@@ -76,30 +62,33 @@ const departementNames = [
 
 const departements = [];
 for (let i = 0; i < NB; i++) {
-  departements.push(
-    await Departement.create({
-      name: departementNames[i].name,
-      description: departementNames[i].description,
-      createdAt: new Date(),
-    })
+  const dep = await Departement.findOneAndUpdate(
+    { name: departementNames[i].name },
+    { $set: { description: departementNames[i].description, createdAt: new Date() } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
   );
+  departements.push(dep);
 }
-console.log(`✅ ${NB} Departements créés.`);
+console.log(`✅ ${NB} Departements upserted/created.`);
 
     // 5. Admins (2)
     const admins = [];
     for (let i = 1; i <= NB_ADMINS; i++) {
-      admins.push(
-        await Admin.create({
-          firstName: `Admin${i}`,
-          lastName: "System",
-          email: `admin${i}@insight.com`,
-          password: hashedPassword,
-          permissions: ["ALL_PERMISSIONS"],
-        })
+      const admin = await Admin.findOneAndUpdate(
+        { email: `admin${i}@insight.com` },
+        {
+          $set: {
+            firstName: `Admin${i}`,
+            lastName: "System",
+            password: hashedPassword,
+            permissions: ["ALL_PERMISSIONS"],
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
       );
+      admins.push(admin);
     }
-    console.log(`✅ ${NB_ADMINS} Admins créés.`);
+    console.log(`✅ ${NB_ADMINS} Admins upserted/created.`);
 
     // 6. Teachers (10)
 const teacherNames = [
@@ -117,19 +106,24 @@ const teacherNames = [
 
 const teachers = [];
 for (let i = 0; i < NB; i++) {
-  teachers.push(
-    await Teacher.create({
-      firstName: teacherNames[i].firstName,
-      lastName: teacherNames[i].lastName,
-      email: `${teacherNames[i].firstName.toLowerCase()}.${teacherNames[i].lastName.toLowerCase()}@insight.com`,
-      password: hashedPassword,
-      speciality: teacherNames[i].speciality,
-      office: `B-${200 + i}`,
-      department: departements[i % departements.length]._id,
-    })
+  const email = `${teacherNames[i].firstName.toLowerCase()}.${teacherNames[i].lastName.toLowerCase()}@insight.com`;
+  const teacher = await Teacher.findOneAndUpdate(
+    { email },
+    {
+      $set: {
+        firstName: teacherNames[i].firstName,
+        lastName: teacherNames[i].lastName,
+        password: hashedPassword,
+        speciality: teacherNames[i].speciality,
+        office: `B-${200 + i}`,
+        department: departements[i % departements.length]._id,
+      },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
   );
+  teachers.push(teacher);
 }
-console.log(`✅ ${NB} Teachers créés.`);
+console.log(`✅ ${NB} Teachers upserted/created.`);
 
     // 7. Students (10)
 const studentNames = [
@@ -147,20 +141,25 @@ const studentNames = [
 
 const students = [];
 for (let i = 0; i < NB; i++) {
-  students.push(
-    await Student.create({
-      firstName: studentNames[i].firstName,
-      lastName: studentNames[i].lastName,
-      email: `${studentNames[i].firstName.toLowerCase()}.${studentNames[i].lastName.toLowerCase()}@insight.com`,
-      password: hashedPassword,
-      studentCode: `ETU${String(i + 1).padStart(4, "0")}`,
-      level: LEVELS[i % LEVELS.length],
-      group: `G${(i % 3) + 1}`,
-      department: departements[i]._id,
-    })
+  const email = `${studentNames[i].firstName.toLowerCase()}.${studentNames[i].lastName.toLowerCase()}@insight.com`;
+  const student = await Student.findOneAndUpdate(
+    { email },
+    {
+      $set: {
+        firstName: studentNames[i].firstName,
+        lastName: studentNames[i].lastName,
+        password: hashedPassword,
+        studentCode: `ETU${String(i + 1).padStart(4, "0")}`,
+        level: LEVELS[i % LEVELS.length],
+        group: `G${(i % 3) + 1}`,
+        department: departements[i]._id,
+      },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
   );
+  students.push(student);
 }
-console.log(`✅ ${NB} Students créés.`);
+console.log(`✅ ${NB} Students upserted/created.`);
 
 // 8. Cours (10)
 const coursData = [
@@ -181,45 +180,46 @@ const teacherAssignment = [0, 1, 2, 0, 1, 3, 4, 0, 5, 6];
 
 const coursList = [];
 for (let i = 0; i < NB; i++) {
-  coursList.push(
-    await Cours.create({
-      Title: coursData[i].Title,
-      Description: coursData[i].Description,
-      Department: departements[i]._id,
-      Teacher: teachers[teacherAssignment[i]]._id,
-      Duration: `${20 + i * 2}h`,
-      Level: coursData[i].Level,
-    })
+    const cours = await Cours.findOneAndUpdate(
+    { Title: coursData[i].Title },
+    {
+      $set: {
+        Description: coursData[i].Description,
+        Department: departements[i]._id,
+        Teacher: teachers[teacherAssignment[i]]._id,
+        Duration: `${20 + i * 2}h`,
+        Level: coursData[i].Level,
+      },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
   );
+  coursList.push(cours);
 }
-console.log(`✅ ${NB} Cours créés.`);
+console.log(`✅ ${NB} Cours upserted/created.`);
 
     // 9. Modules (10)
     const modules = [];
     for (let i = 1; i <= NB; i++) {
-      modules.push(
-        await Module.create({
-          title: `Module ${i}`,
-          description: `Description du module ${i}`,
-          order: i,
-          cours: coursList[i % coursList.length]._id,
-          createdAt: new Date(),
-        })
+      const coursRef = coursList[i % coursList.length];
+      const mod = await Module.findOneAndUpdate(
+        { title: `Module ${i}`, cours: coursRef._id },
+        { $set: { description: `Description du module ${i}`, order: i, createdAt: new Date() } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
       );
+      modules.push(mod);
     }
-    console.log(`✅ ${NB} Modules créés.`);
+    console.log(`✅ ${NB} Modules upserted/created.`);
 
     // 10. Lessons (10)
     for (let i = 1; i <= NB; i++) {
-      await Lesson.create({
-        title: `Leçon ${i}`,
-        content: `<h1>Leçon ${i}</h1><p>Contenu de la leçon ${i}...</p>`,
-        order: String(i),
-        module: modules[i % modules.length]._id,
-        createdAt: new Date(),
-      });
+      const moduleRef = modules[i % modules.length];
+      await Lesson.findOneAndUpdate(
+        { title: `Leçon ${i}`, module: moduleRef._id },
+        { $set: { content: `<h1>Leçon ${i}</h1><p>Contenu de la leçon ${i}...</p>`, order: String(i), createdAt: new Date() } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
     }
-    console.log(`✅ ${NB} Lessons créées.`);
+    console.log(`✅ ${NB} Lessons upserted/created.`);
 
     // 11. Quizzes (10) — alignés avec les Cours
 const quizData = [
@@ -237,19 +237,14 @@ const quizData = [
 
 const quizzes = [];
 for (let i = 0; i < NB; i++) {
-  quizzes.push(
-    await Quiz.create({
-      cours: coursList[i]._id,
-      title: quizData[i].title,
-      description: quizData[i].description,
-      duration: 15,
-      passingScore: 60,
-      isPublished: true,
-      createdBy: teachers[i]._id,
-    })
+  const q = await Quiz.findOneAndUpdate(
+    { title: quizData[i].title },
+    { $set: { cours: coursList[i]._id, description: quizData[i].description, duration: 15, passingScore: 60, isPublished: true, createdBy: teachers[i]._id } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
   );
+  quizzes.push(q);
 }
-console.log(`✅ ${NB} Quizzes créés.`);
+console.log(`✅ ${NB} Quizzes upserted/created.`);
 
    // 12. Questions (10) + Choices (3 par question) — alignées avec les Quizzes
 const questionData = [
@@ -338,26 +333,26 @@ const questionData = [
 const questions = [];
 const correctChoiceByQuestion = [];
 for (let i = 0; i < NB; i++) {
-  const question = await Question.create({
-    Quiz: quizzes[i]._id,
-    statement: questionData[i].statement,
-    status: "MCQ",
-    point: 2,
-    order: 1,
-  });
+  const question = await Question.findOneAndUpdate(
+    { statement: questionData[i].statement, Quiz: quizzes[i]._id },
+    { $set: { status: "MCQ", point: 2, order: 1, Quiz: quizzes[i]._id } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
   questions.push(question);
 
-  const choices = await Choice.create(
-    questionData[i].choices.map((c, idx) => ({
-      question: question._id,
-      text: c.text,
-      isCorrect: c.isCorrect,
-      order: idx + 1,
-    }))
-  );
-  correctChoiceByQuestion.push(choices.find((c) => c.isCorrect));
+  const createdChoices = [];
+  for (let idx = 0; idx < questionData[i].choices.length; idx++) {
+    const c = questionData[i].choices[idx];
+    const choice = await Choice.findOneAndUpdate(
+      { question: question._id, text: c.text },
+      { $set: { isCorrect: c.isCorrect, order: idx + 1 } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    createdChoices.push(choice);
+  }
+  correctChoiceByQuestion.push(createdChoices.find((c) => c.isCorrect));
 }
-console.log(`✅ ${NB} Questions (+ Choices) créées.`);
+console.log(`✅ ${NB} Questions (+ Choices) upserted/created.`);
 // 13. Inscriptions — كل student يظهر مرتين: مرة completed, مرة active
 const enrollmentPairs = [
   { student: 0, cours: 0 }, { student: 0, cours: 1 },
@@ -376,93 +371,81 @@ const enrollmentPairs = [
 const statuses = enrollmentPairs.map((_, i) => (i % 2 === 0 ? "completed" : "active"));
 
 for (let i = 0; i < enrollmentPairs.length; i++) {
-  await Inscription.create({
-    student: students[enrollmentPairs[i].student]._id,
-    cours: coursList[enrollmentPairs[i].cours]._id,
-    enrolledAt: new Date(),
-    status: statuses[i],
-  });
+  const existing = await Inscription.findOne({ student: students[enrollmentPairs[i].student]._id, cours: coursList[enrollmentPairs[i].cours]._id });
+  if (!existing) {
+    await Inscription.create({
+      student: students[enrollmentPairs[i].student]._id,
+      cours: coursList[enrollmentPairs[i].cours]._id,
+      enrolledAt: new Date(),
+      status: statuses[i],
+    });
+  }
 }
-console.log(`✅ ${enrollmentPairs.length} Inscriptions créées.`);
+console.log(`✅ ${enrollmentPairs.length} Inscriptions ensured.`);
     // 14. QuizAttempts (10) — scores variés
 const scores = [95, 62, 78, 88, 55, 92, 70, 45, 83, 67];
 
 const attempts = [];
 for (let i = 0; i < NB; i++) {
-  const attempt = await QuizAttempt.create({
-    student: students[i]._id,
-    Quiz: quizzes[i]._id,
-    score: scores[i],
-    totalQuestions: 1,
-    staredAt: new Date(),
-    submitteAt: new Date(),
-  });
+  const attempt = await QuizAttempt.findOneAndUpdate(
+    { student: students[i]._id, Quiz: quizzes[i]._id },
+    { $set: { score: scores[i], totalQuestions: 1, staredAt: new Date(), submitteAt: new Date() } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
   attempts.push(attempt);
 }
-console.log(`✅ ${NB} QuizAttempts créés.`);
+console.log(`✅ ${NB} QuizAttempts upserted/created.`);
 
     // 15. Answers (10) — une réponse (correcte) par attempt, liée à la question du quiz correspondant
     for (let i = 0; i < NB; i++) {
-      await Answer.create({
-        attempt: attempts[i]._id,
-        question: questions[i]._id,
-        selectedChoice: correctChoiceByQuestion[i]._id,
-        isCorrect: true,
-        pointsEarned: questions[i].point,
-      });
+      await Answer.findOneAndUpdate(
+        { attempt: attempts[i]._id, question: questions[i]._id },
+        { $set: { selectedChoice: correctChoiceByQuestion[i]._id, isCorrect: true, pointsEarned: questions[i].point } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
     }
-    console.log(`✅ ${NB} Answers créées.`);
+    console.log(`✅ ${NB} Answers upserted/created.`);
 
     // 16. Notifications (10) — pour les students
     for (let i = 0; i < NB; i++) {
-      await Notification.create({
-        user: students[i]._id,
-        title: `Notification ${i + 1}`,
-        message: `Vous avez une nouvelle activité sur le cours ${i + 1}.`,
-        type: "info",
-        isRead: false,
-        createdAt: new Date(),
-      });
+      await Notification.findOneAndUpdate(
+        { user: students[i]._id, title: `Notification ${i + 1}` },
+        { $set: { message: `Vous avez une nouvelle activité sur le cours ${i + 1}.`, type: "info", isRead: false, createdAt: new Date() } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
     }
-    console.log(`✅ ${NB} Notifications créées.`);
+    console.log(`✅ ${NB} Notifications upserted/created.`);
 
     // 17. Recommendations (10) — pour les students
     for (let i = 0; i < NB; i++) {
-      await Recommendation.create({
-        student: students[i]._id,
-        message: `Nous vous recommandons de revoir le module ${i + 1}.`,
-        type: "revision",
-        confidenceScore: 0.75,
-        createdAt: new Date(),
-      });
+      await Recommendation.findOneAndUpdate(
+        { student: students[i]._id, message: `Nous vous recommandons de revoir le module ${i + 1}.` },
+        { $set: { type: "revision", confidenceScore: 0.75, createdAt: new Date() } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
     }
-    console.log(`✅ ${NB} Recommendations créées.`);
+    console.log(`✅ ${NB} Recommendations upserted/created.`);
 
     // 18. PerformanceMetrics (10) — pour les students
     for (let i = 0; i < NB; i++) {
-      await PerformanceMetric.create({
-        student: students[i]._id,
-        Cours: coursList[i % coursList.length]._id,
-        weekname: `Semaine ${i + 1}`,
-        quizScorreAverage: 75,
-        attendanceRate: 90,
-        createdAt: new Date(),
-      });
+      await PerformanceMetric.findOneAndUpdate(
+        { student: students[i]._id, Cours: coursList[i % coursList.length]._id, weekname: `Semaine ${i + 1}` },
+        { $set: { quizScorreAverage: 75, attendanceRate: 90, createdAt: new Date() } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
     }
-    console.log(`✅ ${NB} PerformanceMetrics créées.`);
+    console.log(`✅ ${NB} PerformanceMetrics upserted/created.`);
 
     // 19. AuditLogs (10) — actions des admins/teachers
     for (let i = 0; i < NB; i++) {
       const actor = i % 2 === 0 ? admins[i % admins.length] : teachers[i % teachers.length];
-      await AuditLog.create({
-        user: actor._id,
-        action: "CREATE",
-        entity: "Cours",
-        entityId: coursList[i % coursList.length]._id,
-        ipAddress: "127.0.0.1",
-      });
+      await AuditLog.findOneAndUpdate(
+        { user: actor._id, action: "CREATE", entity: "Cours", entityId: coursList[i % coursList.length]._id },
+        { $set: { ipAddress: "127.0.0.1" } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
     }
-    console.log(`✅ ${NB} AuditLogs créés.`);
+    console.log(`✅ ${NB} AuditLogs upserted/created.`);
 
     console.log("🎉 Seeding terminé avec succès !");
     console.log(
