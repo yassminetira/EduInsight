@@ -8,13 +8,9 @@ const path = require("path");
 dotenv.config();
 const app = express();
 /* Middlewares globaux */
-app.use(express.json()); // lire le body JSON
 app.use(cors());         // autoriser les requêtes externes
-
-
-// Middleware
-app.use(cors());
-app.use(express.json());
+app.use(express.json()); // lire le body JSON
+app.use(express.urlencoded({ extended: true })); // parser application/x-www-form-urlencoded
 
 // Connexion BDD
 connectDB();
@@ -40,7 +36,6 @@ app.use("/api/choices", require("./routes/choiceRoutes"));
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/register", require("./routes/authRoutes"));
 app.use("/api/login", require("./routes/authRoutes"));
-app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/dashboard", require("./routes/dashboardRoutes"));
 app.use("/api/chat", require("./routes/chatRoutes"));
