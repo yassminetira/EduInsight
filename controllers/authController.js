@@ -40,6 +40,8 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   try {
+    console.log('➡️ /api/auth/login headers:', req.headers['content-type']);
+    console.log('➡️ /api/auth/login body:', req.body);
     console.log('🔐 Login attempt for:', email);
     const user = await User.findOne({ email });
     if (!user) console.log('⚠️ Login failed - user not found:', email);
