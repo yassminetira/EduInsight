@@ -88,6 +88,51 @@ console.log(`✅ ${NB} Departements upserted/created.`);
       );
       admins.push(admin);
     }
+
+    // Demo accounts for quick testing
+    const demoAccounts = [
+      {
+        role: "admin",
+        email: "demo.admin@insight.com",
+        firstName: "Demo",
+        lastName: "Admin",
+        password: hashedPassword,
+        permissions: ["ALL_PERMISSIONS"],
+      },
+      {
+        role: "teacher",
+        email: "demo.teacher@insight.com",
+        firstName: "Demo",
+        lastName: "Teacher",
+        password: hashedPassword,
+        speciality: "Demo Teaching",
+        office: "D-101",
+      },
+      {
+        role: "student",
+        email: "demo.student@insight.com",
+        firstName: "Demo",
+        lastName: "Student",
+        password: hashedPassword,
+        studentCode: "DEMO001",
+        level: "L1",
+        group: "G1",
+      },
+    ];
+
+    for (const demo of demoAccounts) {
+      const Model = demo.role === "admin" ? Admin : demo.role === "teacher" ? Teacher : Student;
+      const match = { email: demo.email };
+      const update = { $set: { ...demo, password: demo.password } };
+
+      await Model.findOneAndUpdate(match, update, {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      });
+    }
+
+    console.log("✅ 3 demo users prepared for login testing.");
     console.log(`✅ ${NB_ADMINS} Admins upserted/created.`);
 
     // 6. Teachers (10)
