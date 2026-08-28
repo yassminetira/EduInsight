@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: EduInsight-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: MONGO_URI
+      - key: JWT_SECRET
+      - key: PORT
