@@ -7,10 +7,49 @@ const path = require("path");
 
 dotenv.config();
 const app = express();
-/* Middlewares globaux */
-app.use(cors());         // autoriser les requêtes externes
-app.use(express.json()); // lire le body JSON
-app.use(express.urlencoded({ extended: true })); // parser application/x-www-form-urlencoded
+
+app.use(cors());
+app.use((req, res, next) => {
+  const contentType = req.headers['content-type'] || '';
+
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+
+  if (contentType.includes('application/json') || contentType.includes('application/x-www-form-urlencoded')) {
+    return next();
+  }
+
+  if (contentType.includes('text/plain')) {
+    let raw = '';
+    req.on('data', (chunk) => {
+      raw += chunk;
+    });
+    req.on('end', () => {
+      if (!raw) {
+        req.body = {};
+        return next();
+      }
+
+      try {
+        req.body = JSON.parse(raw);
+      } catch {
+        try {
+          const params = new URLSearchParams(raw);
+          req.body = Object.fromEntries(params.entries());
+        } catch {
+          req.body = {};
+        }
+      }
+      next();
+    });
+    return;
+  }
+
+  next();
+});
+app.use(express.json({ strict: false }));
+app.use(express.urlencoded({ extended: true }));
 
 // Connexion BDD
 connectDB();

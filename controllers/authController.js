@@ -38,11 +38,16 @@ exports.register = async (req, res) => {
 
 // 8.2 Connexion (Login)
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body || {};
   try {
     console.log('➡️ /api/auth/login headers:', req.headers['content-type']);
     console.log('➡️ /api/auth/login body:', req.body);
     console.log('🔐 Login attempt for:', email);
+
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Identifiants invalides' });
+    }
+
     const user = await User.findOne({ email });
     if (!user) console.log('⚠️ Login failed - user not found:', email);
     if (!user) {
