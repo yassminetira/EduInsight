@@ -36,7 +36,18 @@ app.use((req, res, next) => {
       } catch {
         try {
           const params = new URLSearchParams(raw);
-          req.body = Object.fromEntries(params.entries());
+          const parsed = Object.fromEntries(params.entries());
+
+          const onlyEntry = Object.keys(parsed)[0];
+          if (Object.keys(parsed).length === 1 && onlyEntry && onlyEntry.startsWith('{')) {
+            try {
+              req.body = JSON.parse(onlyEntry);
+            } catch {
+              req.body = parsed;
+            }
+          } else {
+            req.body = parsed;
+          }
         } catch {
           req.body = {};
         }
