@@ -4,10 +4,9 @@ const recommendationController = require("../controllers/recommendationControlle
 const protect = require("../middlewares/authMiddleware");
 const authorize = require("../middlewares/roleMiddleware");
 
-router.post("/ajouter",protect, authorize(["teacher", "admin"]),recommendationController.ajouterRecommendation);
-router.get("/list", protect, recommendationController.listerRecommendations);
-router.get("/:id", protect, recommendationController.getRecommendationById);
-router.put("/:id", protect, recommendationController.updateRecommendation);
-router.delete("/:id", protect, recommendationController.deleteRecommendation);
+router.post("/generate", protect, authorize(["student"]), recommendationController.generateForCurrentStudent);
+router.get("/my", protect, authorize(["student"]), recommendationController.getMyRecommendations);
+router.patch("/:id/read", protect, authorize(["student"]), recommendationController.markAsRead);
+router.patch("/read-all", protect, authorize(["student"]), recommendationController.markAllAsRead);
 
 module.exports = router;

@@ -461,15 +461,23 @@ console.log(`✅ ${NB} QuizAttempts upserted/created.`);
     }
     console.log(`✅ ${NB} Notifications upserted/created.`);
 
-    // 17. Recommendations (10) — pour les students
-    for (let i = 0; i < NB; i++) {
-      await Recommendation.findOneAndUpdate(
-        { student: students[i]._id, message: `Nous vous recommandons de revoir le module ${i + 1}.` },
-        { $set: { type: "revision", confidenceScore: 0.75, createdAt: new Date() } },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      );
+    // 17. Recommendations multiple par student fel seed.js
+    await Recommendation.deleteMany({}); // Nettoyer el qdim
+    for (let s = 0; s < students.length; s++) {
+      for (let c = 0; c < 4; c++) { // 4 cours par student
+        const currentCours = coursList[(s + c) % coursList.length];
+        await Recommendation.create({
+          student: students[s]._id,
+          courseId: currentCours._id,
+          courseTitle: currentCours.Title,
+          message: `La course ${currentCours.Title} correspond à votre niveau et complète votre parcours.`,
+          confidenceScore: 80 + (c * 5),
+          type: "course",
+          isRead: false
+        });
+      }
     }
-    console.log(`✅ ${NB} Recommendations upserted/created.`);
+    console.log("✅ Barcha Recommendations b asami el cours tcreyiw!");
 
     // 18. PerformanceMetrics (10) — pour les students
     for (let i = 0; i < NB; i++) {

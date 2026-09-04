@@ -4,6 +4,7 @@ const c = require("../controllers/quizAttemptController");
 const protect = require("../middlewares/authMiddleware");
 const authorize = require("../middlewares/roleMiddleware");
 
+
 router.post("/ajouter", protect, authorize(["student"]), c.ajouterQuizAttempt);
 router.get("/list", protect, authorize(["teacher", "admin"]), c.listerQuizAttempts);
 router.get("/:id", protect, c.getQuizAttemptById);
